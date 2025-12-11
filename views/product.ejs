@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title><%= product.name %></title>
+
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="<%= product.name %>" />
+  <meta property="og:description" content="<%= product.description %>" />
+  <meta property="og:image" content="<%= product.imageUrl %>" />
+  <meta property="og:url" content="<%= product.url %>" />
+  <meta property="og:type" content="product" />
+
+  <!-- Optional: Twitter Card (for better support) -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<%= product.name %>">
+  <meta name="twitter:description" content="<%= product.description %>">
+  <meta name="twitter:image" content="<%= product.imageUrl %>">
+
+  <!-- Mobile-friendly -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body>
+  <h1><%= product.name %></h1>
+  <p><%= product.description %></p>
+  <img src="<%= product.imageUrl %>" width="300" />
+</body>
+</html>
