@@ -1,14 +1,13 @@
 const Banner = require('../../models/Banner');
-const SubCategory = require('../../models/SubCategory');
 const { paginateAndSearch } = require('../../utils/pagination');
 
 const createBanner = async (req, res) => {
   try {
-    const { name, banner_type, Subcategory } = req.body;
+    const { name, banner_type } = req.body;
     const image = req.file ? `/uploads/${req.file.filename}` : null;
 
-    if (!name || !Subcategory) {
-      return res.status(400).json({ message: 'Name and Subcategory are required' });
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' });
     }
 
     const existingBanner = await Banner.findOne({ name });
@@ -19,13 +18,10 @@ const createBanner = async (req, res) => {
     const newBanner = await Banner.create({
       name,
       banner_type,
-      Subcategory,
       image
     });
 
-    const result = await Banner.findById(newBanner._id).populate('Subcategory');
-
-    res.status(201).json({ message: 'Banner created successfully', banner: result });
+    res.status(201).json({ message: 'Banner created successfully', banner: newBanner });
   } catch (err) {
     res.status(500).json({ message: 'Error creating banner', error: err.message });
   }
@@ -49,8 +45,7 @@ const getAllBanners = async (req, res) => {
       filter,
       sort: { createdAt: -1 },
       baseUrl,
-      originalQuery: req.query,
-      populate: ['Subcategory']
+      originalQuery: req.query
     });
 
     res.status(200).json({
@@ -66,7 +61,7 @@ const getAllBanners = async (req, res) => {
 
 const getBannerById = async (req, res) => {
   try {
-    const banner = await Banner.findById(req.params.id).populate('Subcategory');
+    const banner = await Banner.findById(req.params.id);
     if (!banner) {
       return res.status(404).json({ message: 'Banner not found' });
     }
@@ -78,30 +73,26 @@ const getBannerById = async (req, res) => {
 
 const updateBanner = async (req, res) => {
   try {
-    const { name, banner_type, Subcategory } = req.body;
+    const { name, banner_type } = req.body;
     const image = req.file ? `/uploads/${req.file.filename}` : null;
 
-    const updatedFields = {
-      name,
-      banner_type,
-      Subcategory
-    };
-     if (!name || !Subcategory) {
-      return res.status(400).json({ message: 'Name and Subcategory are required' });
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' });
     }
-    if (image) {
-      updatedFields.image = image;
-    }
+
+    const updatedFields = { name, banner_type };
+    if (image) updatedFields.image = image;
 
     const updatedBanner = await Banner.findByIdAndUpdate(
       req.params.id,
       { $set: updatedFields },
       { new: true }
-    ).populate('Subcategory');
+    );
 
     if (!updatedBanner) {
       return res.status(404).json({ message: 'Banner not found' });
     }
+
     res.status(200).json({ message: 'Banner updated successfully', banner: updatedBanner });
   } catch (err) {
     res.status(500).json({ message: 'Error updating banner', error: err.message });
