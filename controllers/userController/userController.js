@@ -1,7 +1,7 @@
 const User = require('../../models/userModel');
 const bcrypt = require('bcryptjs');
 const { paginateAndSearch } = require('../../utils/pagination');
-
+const csv = require("csvtojson");
 const createUser = async (req, res) => {
   try {
     const { phoneNumber, name, email, password, role = 'customer', status = 'active', company, description } = req.body;
@@ -49,8 +49,9 @@ const getAllUsers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const pageSize = parseInt(req.query.page_size) || 10;
-    const search = req.query.search || '';
+    const search = req.query.search || "";
     const role = req.query.role || null;
+    const status = req.query.status || null;
 
     const filter = {};
 
@@ -58,29 +59,34 @@ const getAllUsers = async (req, res) => {
       filter.role = role;
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`;
+    if (status) {
+      filter.status = status;
+    }
+
+    const baseUrl = `${req.protocol}://${req.get("host")}${req.baseUrl}${req.path}`;
 
     const data = await paginateAndSearch(User, {
       page,
       pageSize,
       search,
-      searchFields: ['name', 'phoneNumber', 'email', 'company'],
+      searchFields: ["name", "phoneNumber", "email", "company"],
       filter,
       sort: { createdAt: -1 },
       baseUrl,
-      originalQuery: req.query
+      originalQuery: req.query,
     });
 
     res.status(200).json({
       count: data.total,
       next: data.next,
       previous: data.previous,
-      results: data.results
+      results: data.results,
     });
   } catch (err) {
-    res.status(500).json({ message: 'Error fetching users', error: err.message });
+    res.status(500).json({ message: "Error fetching users", error: err.message });
   }
 };
+
 
 const getUserById = async (req, res) => {
   try {
@@ -136,5 +142,59 @@ const deleteUser = async (req, res) => {
     res.status(500).json({ message: 'Error deleting user', error: err.message });
   }
 };
+const bulkUploadUsers = async (req, res) => {
+  try {
+    let users = [];
+    if (req.file) users = await csv().fromFile(req.file.path);
+    else if (req.body.users) users = req.body.users;
+    else return res.status(400).json({ message: "No data provided" });
 
-module.exports = { createUser, getAllUsers, getUserById, updateUser, deleteUser };
+    const phones = users.map(u => u.phoneNumber).filter(Boolean);
+    const emails = users.map(u => u.email).filter(Boolean);
+
+    const existing = await User.find({
+      $or: [
+        { phoneNumber: { $in: phones } },
+        { email: { $in: emails } }
+      ]
+    }).select("phoneNumber email");
+
+    const existingPhones = new Set(existing.map(u => u.phoneNumber));
+    const existingEmails = new Set(existing.map(u => u.email));
+
+    const invalidRows = [];
+    const validUsers = [];
+
+    for (let i = 0; i < users.length; i++) {
+      const u = users[i];
+      const rowNum = i + 1;
+
+      if (!u.phoneNumber) { invalidRows.push({ row: rowNum, reason: "Phone missing", data: u }); continue; }
+      if (existingPhones.has(u.phoneNumber)) { invalidRows.push({ row: rowNum, reason: "Phone exists", data: u }); continue; }
+      if (u.email && existingEmails.has(u.email)) { invalidRows.push({ row: rowNum, reason: "Email exists", data: u }); continue; }
+
+      validUsers.push(u);
+    }
+
+    if (invalidRows.length > 0) {
+      return res.status(400).json({ message: "Validation failed", invalidRows });
+    }
+    const formattedUsers = validUsers.map(u => ({
+      phoneNumber: u.phoneNumber,
+      name: u.name || null,
+      email: u.email || null,
+      role: u.role || "customer",
+      status: u.status || "active",
+      company: u.company || null,
+      description: u.description || null
+    }));
+    for (let i = 0; i < formattedUsers.length; i += BATCH_SIZE) {
+      const batch = formattedUsers.slice(i, i + BATCH_SIZE);
+      await User.insertMany(batch);
+    }
+    res.status(201).json({ message: "Bulk upload successful", uploaded: formattedUsers.length });
+  } catch (err) {
+    res.status(500).json({ message: "Bulk upload failed", error: err.message });
+  }
+};
+module.exports = { createUser, getAllUsers, getUserById, updateUser, deleteUser,bulkUploadUsers };
