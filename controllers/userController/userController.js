@@ -179,6 +179,7 @@ const bulkUploadUsers = async (req, res) => {
     if (invalidRows.length > 0) {
       return res.status(400).json({ message: "Validation failed", invalidRows });
     }
+
     const formattedUsers = validUsers.map(u => ({
       phoneNumber: u.phoneNumber,
       name: u.name || null,
@@ -188,13 +189,13 @@ const bulkUploadUsers = async (req, res) => {
       company: u.company || null,
       description: u.description || null
     }));
-    for (let i = 0; i < formattedUsers.length; i += BATCH_SIZE) {
-      const batch = formattedUsers.slice(i, i + BATCH_SIZE);
-      await User.insertMany(batch);
-    }
+
+    await User.insertMany(formattedUsers);
+
     res.status(201).json({ message: "Bulk upload successful", uploaded: formattedUsers.length });
   } catch (err) {
     res.status(500).json({ message: "Bulk upload failed", error: err.message });
   }
 };
+
 module.exports = { createUser, getAllUsers, getUserById, updateUser, deleteUser,bulkUploadUsers };
