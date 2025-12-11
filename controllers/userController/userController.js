@@ -96,10 +96,10 @@ const getUserById = async (req, res) => {
 
 const updateUser = async (req, res) => {
   try {
-    const { name, email, password, role, status, company, description } = req.body;
+    const { name, email, password, role, status, company, description,phoneNumber } = req.body;
     const profilePicture = req.file ? req.file.path : null;
 
-    const updatedFields = { name, email, role, status, company, description };
+    const updatedFields = { name, email, role, status, company, description,phoneNumber };
 
     if (password) {
       updatedFields.password = await bcrypt.hash(password, 10);
