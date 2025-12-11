@@ -33,7 +33,7 @@ const userSchema = new mongoose.Schema(
     },
     status: { 
       type: String, 
-      enum: ['active', 'suspended', 'deleted'], 
+      enum: ['active', 'suspended', 'deleted', 'lead', 'prospect', 'customer'], 
       default: 'active' 
     },
     name: { 
@@ -50,9 +50,17 @@ const userSchema = new mongoose.Schema(
     },
     role: { 
       type: String,
-      enum: ['admin', 'vendor', 'customer'],
+      enum: ['admin', 'customer'],
       default: 'customer'
     },
+    company: {
+      type: String,
+      default: null
+    },
+    description: {
+      type: String,
+      default: null
+    }
   },
   { 
     timestamps: true 
